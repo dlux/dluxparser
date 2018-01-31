@@ -2,6 +2,15 @@
 shrinker is a CLI providing few commands to shrink the size of a text or log
 file.
 
+----------------
+Common Arguments
+----------------
+
+* ``--root-dir, -d``: The parent directory where files to be parsed live.
+  Folder can contain sub-folders.
+* ``--output-dir, -o``: The directory where parsed files will live. 
+* ``--inline``: The parsed files will replace the original ones.
+
 Available sub-commands:
 
 ---------------------
@@ -16,8 +25,6 @@ Removes additional lines from the top and bottom of the output.
 Arguments
 ~~~~~~~~~
 
-* ``--root-dir, -d``: The parent directory where files to be parsed lives. 
-  Folder can contain sub-folders.
 * ``--initstr, -i``: All lines before (and including) initstr regex will be
   removed from outcome file.
 * ``--endstr, -e``: All lines after (and including) endstr regex will be
@@ -96,7 +103,6 @@ import shutil
 
 from cliff import command
 from datetime import datetime
-import pdb
 
 
 class ArgumentParser():
@@ -130,23 +136,17 @@ class ArgumentParser():
         '''Common arguments to all subcommands of shrinker cli.'''
         # Arguments that go with all subcommands.
         shared_args = argparse.ArgumentParser(add_help=False)
-        #group = shared_args.add_mutually_exclusive_group()
-        #group.add_argument('-s', '--silent',
-        #                   action='store_true',
-        #                   help='Suppress output except warnings and errors.')
-        #group.add_argument('-v', '--verbose',
-        #                   action='count',
-        #                   help='Show verbose output.')
         shared_args.add_argument(
             "-d", "--root-dir", metavar="<dir_name>",
             action='store', required=True, dest='root_dir', type=str,
             help="The root directory where text file(s) are stored.")
-        shared_args.add_argument(
+        group = shared_args.add_mutually_exclusive_group()
+        group.add_argument(
             "-o", "--output-dir", metavar="<dir_name>",
             action='store', required=False, dest='output_dir', type=str,
             default =  'ParsedFiles',
             help="The directory where parsed file(s) will be saved.")
-        shared_args.add_argument(
+        group.add_argument(
             "--inline", action='store_true',
             required=False,
             help='Asume parsed file must replace existing original one.'
@@ -222,9 +222,10 @@ class Shrinker():
         if os.path.abspath(args.root_dir) == os.path.abspath(output_dir):
             raise Exception("Input and Output folders must be different.")
 
-        # Create output folder if exists create a backup
+        # Create output folder if exists rename it
         if os.path.exists(output_dir):
-            shutil.move(output_dir, output_dir+'.bk.'+datetime.now().isoformat())
+            shutil.move(output_dir, output_dir + '.bk.' + 
+                        datetime.now().isoformat())
         os.makedirs(output_dir)
 
     def shrink(self):
