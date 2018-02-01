@@ -33,6 +33,7 @@ Arguments
   top of the outcome file.
 * ``--remove-from-bottom, -b``: (Optional) Removes b number of lines from the
   bottom of the outcome file.
+* ``--to-lower, -l: All text within the files are turned into lower case.``:
  
 Usage
 ~~~~~
@@ -93,11 +94,20 @@ Usage
 remove-from-regex takes a regex or several regexes to delete the lines that
 matches the given regex(es).
 
+------------------------------
+to-lower:
+------------------------------
+
+Makes all the lines in the file lower case.
+
+Usage
+~~~~~
+
+to-lower takes a directory and make all files content lower case.
 """
 import argparse
 import os
 import re
-import sys
 import time
 import shutil
 
@@ -118,7 +128,8 @@ class ArgumentParser():
             )
         self.parser = parser
 
-        subparsers = parser.add_subparsers(help='\nAvailable sub-commands.\n')
+        subparsers = parser.add_subparsers(title='Sub-Commands',
+                                           help='\nAvailable sub-commands.\n')
 
         # Add arguments that goes with all sub-commands
         common_args = self.add_common_args()
@@ -128,6 +139,9 @@ class ArgumentParser():
         self.add_remove_from(subparsers, [common_args])
         self.add_remove_from(subparsers, [common_args], 'bottom')
         self.add_remove_from_regex(subparsers, [common_args])
+        _lower = subparsers.add_parser('to-lower', parents=[common_args],
+                                      help='Make file(s) content lower case.')
+        _lower.set_defaults(func='to_lower')
 
     def parse_args(self, args):
         return self.parser.parse_args(args=args)
@@ -179,6 +193,11 @@ class ArgumentParser():
             "-b", "--remove-from-bottom", metavar="N",
             action='store', dest="remove_bottom", default=0, type=int,
             help="Additional lines to remove from the bottom.")
+
+        parser_sl.add_argument(
+            "-l", "--to-lower", required=False,
+            action='store_true', dest="to_lower",
+            help="Will make file(s) content lower case.")
 
         parser_sl.set_defaults(func="shrink")
 
@@ -243,8 +262,13 @@ class Shrinker():
                 data = self._remove_lines(data, self.args.remove_top + 1)
                 # Remove content after endStr
                 data = self._remove_after(data, self.args.endstr)
-                # Remove M lines from the bottom
+                # Remove return carriage characters
+                data = ''.join(data.split('\r'))
+                # Remove N lines from the bottom
                 data = self._remove_lines(data, self.args.remove_bottom, False)
+                if self.args.to_lower:
+                    data = data.lower()
+
                 self._write_to_file(output, data)
 
         # Handle inline parameter
@@ -266,12 +290,30 @@ class Shrinker():
                     data = self._remove_lines(origin, self.args.number, False)
                 elif self.args.func2 == 'regex':
                     data = self._remove_lines_r(origin, self.args.regex)
+
                 self._write_to_file(output, data)
 
         # Handle inline parameter
         self._ifinline()
         print("Found %i files." % count)
-        
+
+    def to_lower(self):
+        '''Main function to make file(s) content lower case.'''
+        # Get and process files
+        count = 0
+        for root, _, files in os.walk(self.args.root_dir):
+            for filename in files:
+                origin = os.path.join(root, filename)
+                output = os.path.join(self.args.output_dir, filename)
+                count = count + 1
+                data = self._get_content(origin).lower()
+
+                self._write_to_file(output, data)
+
+        # Handle inline parameter
+        self._ifinline()
+        print("Found %i files." % count)
+
     ##### Internal methods - To be used by the subcommands #####
     def _get_content(self, name):
         '''Get the content from a file or from stream.'''
@@ -328,12 +370,13 @@ class Shrinker():
             return re.split('\n', content, num)[num]
         else:
             content = content[::-1]
-            content = re.split('\r', content, num)[num]
+            content = re.split('\n', content, num)[num]
             return content[::-1]
 
     def _remove_lines_r(self, name, regex):
         '''Remove the lines that match a given regex.'''
-        content = self._get_content(name)
+        # Add a \n to make sure last line is parsed properly
+        content = self._get_content(name) + '\n'
         count = len(content.split('\n'))
         for r in regex:
             content = re.sub('.*'+r+'.*\n', '', content)
