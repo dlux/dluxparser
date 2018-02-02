@@ -256,14 +256,16 @@ class Shrinker():
                 origin = os.path.join(root, filename)
                 output = os.path.join(self.args.output_dir, filename)
                 count = count + 1
+                print("%i. Parsing File: %s" % (count, origin))
+                data = self._get_content(origin)
+                # Remove return carriage characters
+                data = ''.join(data.split('\r'))
                 # Remove content before initStr
-                data = self._remove_before(origin, self.args.initstr)
+                data = self._remove_before(data, self.args.initstr)
                 # Remove N lines from the top
                 data = self._remove_lines(data, self.args.remove_top + 1)
                 # Remove content after endStr
                 data = self._remove_after(data, self.args.endstr)
-                # Remove return carriage characters
-                data = ''.join(data.split('\r'))
                 # Remove N lines from the bottom
                 data = self._remove_lines(data, self.args.remove_bottom, False)
                 if self.args.to_lower:
@@ -284,6 +286,7 @@ class Shrinker():
                 origin = os.path.join(root, filename)
                 output = os.path.join(self.args.output_dir, filename)
                 count = count + 1
+                print("%i. Parsing File: %s" % (count, origin))
                 if self.args.func2 == 'top':
                     data = self._remove_lines(origin, self.args.number)
                 elif self.args.func2 == 'bottom':
@@ -366,6 +369,10 @@ class Shrinker():
     def _remove_lines(self, name, num, top=True):
         '''Remove num lines from the top or bottom of a given file or stream'''
         content = self._get_content(name)
+        # Return content if nothing to remove
+        if num == 0:
+            return content
+
         if top:
             return re.split('\n', content, num)[num]
         else:
@@ -413,3 +420,14 @@ if __name__ == "__main__":
     main()
     print("--- %s seconds ---" % (time.time() - start_time))
 
+
+# MFG 1/25/2018 parameters::
+# shrinker shrinklog
+#     --root-dir original
+#     --initstr "Tx64 display.cfg file.*\n[*]+"
+#     --endstr "[*]+" (real_lenght is 25 starts)
+#     --remove-from-top 2
+#     --remove-from-bottom 2
+#     --to-lower
+# shrinker remove-from-regex -r "number of" "present" "count" "empty"
+#     --root-dir parsed1 --inline

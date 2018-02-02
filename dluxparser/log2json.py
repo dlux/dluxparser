@@ -1,8 +1,11 @@
 """
-txt2json is a parser to transform the information on a text or log file into
-Json fomat.
+log2json is a parser to transform the information on a custom
+text or custom log file into Json format.
+
 Expected file sintaxis:
 
+    FeatureF = free form text value
+    FeatureF = free form text value
     FeatureX free form text key A = free form text value
     FeatureX free form text key B = free form text value
     FeatureY a_number free form text key A = free form text value
@@ -36,6 +39,10 @@ Expected outcome:
     {"part":"free_form_text_value"},
     {"part":"free_form_text_value"}
   ]
+  "FeatureF": [
+    {"part":"free_form_text_value"},
+    {"part":"free_form_text_value"}
+  ]
 }
 
 Arguments
@@ -55,18 +62,16 @@ transforms all available files into json format as described above.
 import argparse
 import os
 import re
-import time
 import shutil
 import json
 
 from cliff import command
 from datetime import datetime
-import pdb
 
 
 class ArgumentParser():
     def __init__(self, args=None, parser=None):
-        desc = ('txt2json transform a text or log file to json. '
+        desc = ('log2json transform a text or log file to json. '
                 'See expected input sintaxis on the documentation')
         if not parser:
             parser = argparse.ArgumentParser(description=desc)
@@ -88,9 +93,10 @@ class ArgumentParser():
     def parse_args(self, args):
         return self.parser.parse_args(args=args)
 
-class Text2Json():
+class Log2Json():
 
     SPECIAL_WORDS = ('front', 'power')
+    CONSTANT_KEY = 'part'
 
     def __init__(self, args):
         self.args = args
@@ -108,7 +114,7 @@ class Text2Json():
         os.makedirs(output_dir)
 
     def parse(self):
-        '''Main function to parse input txt files into json'''
+        '''Main function to parse input log files into json'''
         # Get and process files
         count = 0
         for root, _, files in os.walk(self.args.root_dir):
@@ -118,11 +124,9 @@ class Text2Json():
                 count = count + 1
 
                 # Parse data
+                print("%i. Parsing file: %s" % (count, origin))
                 data = self._parse(origin)
-                pdb.set_trace()
                 self._write_to_file(output, json.dumps(data, indent=4))
-
-        print("Found %i files." % count)
 
     ##### Internal methods - To be used by the subcommands #####
     def _get_content(self, name):
@@ -136,7 +140,7 @@ class Text2Json():
         return content
 
     def _locate_match(self, name, pattern):
-        '''Locate a string patern whithin a file or stream.'''
+        '''Locate a string patern within a file or stream.'''
         content = self._get_content(name)
         return re.split(pattern, content, 1)
 
@@ -156,7 +160,10 @@ class Text2Json():
         return mystr
 
     def _parse(self, name):
-        content = self._get_content(name) + '\0'
+        content = self._get_content(name)
+        # Make sure last line is parsed correctly
+        if content[len(content) - 1] != '\n':
+            content = content + '\n'
         # States:
         # 0. Initial
         #   Collect any character until a digit or '=' appears.
@@ -171,74 +178,83 @@ class Text2Json():
         #    Move to state 0.
         # Note: all blank spaces are replaced with underscores.
         json_content={}
-        feature = key = value = ''
-        nElement = state = 0
-        multiplier = 1
+        nElement = feature = key = value = ''
+        state = 0
 
         for char_ in content:
+            # Verify it is not garbage if so, ignore
+            try:
+                char_.decode('utf-8')
+            except:
+                continue
+
             if state == 0:
                 # Initial State
                 if char_.isdigit():
                     feature = self._trim_plus_underscore(feature)
-                    nElement = int(char_)
+                    nElement = char_
                     state = 1
                 elif char_ == '=':
                     aux = re.split('\\s', feature.strip(), 1)
                     feature = self._trim_plus_underscore(aux[0])
                     tmp = feature.lower()
-                    if tmp in self.SPECIAL_WORDS:
+                    if tmp in self.SPECIAL_WORDS and len(aux) > 1:
                         # Special case for front panel and power supply
                         aux = re.split('\\s', aux[1], 1)
                         feature = (feature + '_' + 
                                    self._trim_plus_underscore(aux[0]))
-                    key = self._trim_plus_underscore(aux[1])
+                    if len(aux) > 1:
+                        key = self._trim_plus_underscore(aux[1])
+                    else:
+                        key = self.CONSTANT_KEY
                     state = 2
                 else:
                     feature = feature + char_
             elif state == 1:
-                # Digit found in state 0.
+                # State - when digit was found in state 0.
                 if char_ == '=':
                     key = self._trim_plus_underscore(key)
                     # Handle case of no explicit key defined
-                    key = 'part' if not key else key
+                    key = self.CONSTANT_KEY if not key else key
                     state = 2
                 elif char_.isdigit():
                     # Handle numbers of more than one digit
                     if not key:
-                        multiplier = multiplier*10
-                        nElement = (int(char_) * multiplier) + nElement
-                elif char_ == '\n' or char_ == '\0':
+                        nElement = nElement + char_
+                elif char_ == '\n':
                     # If line is truncated, ignore feature and restart state
-                    feature = key = value = ''
-                    nElement = state = 0
-                    nBy = 1
+                    nElement = feature = key = value = ''
+                    state = 0
                 else:
                     key = key + char_
             elif state == 2:
-                # Last stage will process value assigned to feature key
+                # Last stage -  will process value assigned to feature key
                 # If value available, feature is processed into json
                 # If no value, feature is ignored
-                if char_ == '\n' or char_ == '\0':
-                    pdb.set_trace()
+                if char_ == '\n':
                     value = self._trim_plus_underscore(value)
                     if value:
                         # Process JSON
-                        jc = json_content.get(feature)
-                        if jc:
-                            if len(jc) >= nElement:
-                                jc[nElement - 1][key] = value
-                            else:
-                                while len(jc) 
-                                jc.append({key: value})
-                        else:
-                            json_content[feature] = [{key: value}]
+                        if not json_content.get(feature):
+                            json_content[feature] = []
+                        jcf = json_content.get(feature)
+
+                        # Insert key, value on nElement index
+                        index = int(nElement) if nElement.isdigit() else 1
+                        
+                        while index + 1 > len(jcf):
+                            jcf.append({})
+
+                        jcf[index][key] = value
 
                     # Return to initial state
-                    feature = key = value = ''
-                    nElement = state = 0
-                    nBy=1
+                    nElement = feature = key = value = ''
+                    state = 0
                 else:
                     value = value + char_
+        # Remove empty dictionaries
+        for key in json_content.keys():
+            json_content[key] = filter(None, json_content[key])
         return json_content
 
     def _remove_lines_r(self, name, regex):
@@ -253,11 +269,11 @@ class Text2Json():
 
 
 # CLIFF CLI CREATOR CLASS
-class CliffTxt2Json(command.Command):
+class CliffLog2Json(command.Command):
     '''Parse text or log files into json format'''
 
     def get_parser(self, prog_name):
-        parser = super(CliffTxt2Json, self).get_parser(prog_name)
+        parser = super(CliffLog2Json, self).get_parser(prog_name)
         ArgumentParser(None, parser)
         return parser
 
@@ -270,13 +286,11 @@ def main(opts=None):
     if opts is None:
         opts = ArgumentParser().parse_args(opts)
     # Create commands instance
-    parse_txt2json = Text2Json(opts)
+    parse2json = Log2Json(opts)
     # Run parsed subcommand function
-    raise SystemExit(getattr(parse_txt2json, opts.func)())
+    raise SystemExit(getattr(parse2json, opts.func)())
 
 
 if __name__ == "__main__":
-    start_time = time.time()
     main()
-    println("--- %s seconds ---" % (time.time() - start_time))
 
