@@ -55,9 +55,9 @@ Arguments
 Usage
 -----
 
-txt2json takes a parent folder which may contain sub-folders and
-transforms all available files into json format as described above.
-
+log2json takes a parent folder which may contain sub-folders and
+transforms all available files - notice expected input sintaxis above -
+into json format.
 """
 import argparse
 import os
@@ -96,7 +96,6 @@ class ArgumentParser():
 class Log2Json():
 
     SPECIAL_WORDS = ('front', 'power')
-    CONSTANT_KEY = 'part'
 
     def __init__(self, args):
         self.args = args
@@ -120,12 +119,16 @@ class Log2Json():
         for root, _, files in os.walk(self.args.root_dir):
             for filename in files:
                 origin = os.path.join(root, filename)
-                output = os.path.join(self.args.output_dir, filename + '.json')
+                fname = os.path.splitext(filename)[0]
+                output = os.path.join(self.args.output_dir, fname + '.json')
                 count = count + 1
 
                 # Parse data
                 print("%i. Parsing file: %s" % (count, origin))
                 data = self._parse(origin)
+                #if data:
+                #    data['id'] = fname
+
                 self._write_to_file(output, json.dumps(data, indent=4))
 
     ##### Internal methods - To be used by the subcommands #####
@@ -205,8 +208,6 @@ class Log2Json():
                                    self._trim_plus_underscore(aux[0]))
                     if len(aux) > 1:
                         key = self._trim_plus_underscore(aux[1])
-                    else:
-                        key = self.CONSTANT_KEY
                     state = 2
                 else:
                     feature = feature + char_
@@ -214,8 +215,6 @@ class Log2Json():
                 # State - when digit was found in state 0.
                 if char_ == '=':
                     key = self._trim_plus_underscore(key)
-                    # Handle case of no explicit key defined
-                    key = self.CONSTANT_KEY if not key else key
                     state = 2
                 elif char_.isdigit():
                     # Handle numbers of more than one digit
@@ -239,22 +238,31 @@ class Log2Json():
                             json_content[feature] = []
                         jcf = json_content.get(feature)
 
-                        # Insert key, value on nElement index
+                        # Insert {key, value} on nElement index
+                        # Or insert value on nElement index if no key
                         index = int(nElement) if nElement.isdigit() else 1
                         
                         while index + 1 > len(jcf):
                             jcf.append({})
 
-                        jcf[index][key] = value
+                        if key:
+                            jcf[index][key] = value
+                        else:
+                            jcf[index] = value
 
                     # Return to initial state
                     nElement = feature = key = value = ''
                     state = 0
                 else:
                     value = value + char_
-        # Remove empty dictionaries
+
         for key in json_content.keys():
+            # Remove empty dictionaries
             json_content[key] = filter(None, json_content[key])
+            if len(json_content[key]) == 1 :
+                # if list has only one element remove the list
+                json_content[key] = json_content[key][0]
+
         return json_content
 
     def _remove_lines_r(self, name, regex):

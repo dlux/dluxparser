@@ -14,7 +14,7 @@ Common Arguments
 Available sub-commands:
 
 ---------------------
-shrinklog sub-command:
+extract-section sub-command:
 ---------------------
 
 Extracts a section of a custom log by removing anything
@@ -34,11 +34,35 @@ Arguments
 * ``--remove-from-bottom, -b``: (Optional) Removes b number of lines from the
   bottom of the outcome file.
 * ``--to-lower, -l: All text within the files are turned into lower case.``:
- 
+
 Usage
 ~~~~~
 
-shrinklog takes a parent folder which may contain sub-folders and
+extract-section takes a parent folder which may contain sub-folders and
+text file(s) to be parsed.
+At the same level of parent folder, shrinklog creates ParsedFiles folder to
+hold all the files parsed.
+
+---------------------
+remove-section sub-command:
+---------------------
+
+Removes a section of a custom log by removing anything
+between a given initSectionStr and a given endSectionStr.
+
+Arguments
+~~~~~~~~~
+
+* ``--initstr, -i``: All lines before (and including) initstr regex will be
+  removed from outcome file.
+* ``--endstr, -e``: All lines after (and including) endstr regex will be
+  removed from outcome file.
+* ``--to-lower, -l: All text within the files are turned into lower case.``:
+
+Usage
+~~~~~
+
+remove-section takes a parent folder which may contain sub-folders and
 text file(s) to be parsed.
 At the same level of parent folder, shrinklog creates ParsedFiles folder to
 hold all the files parsed.
@@ -135,7 +159,8 @@ class ArgumentParser():
         common_args = self.add_common_args()
 
         # Add sub-command parsers:
-        self.add_shrinklog_parser(subparsers, [common_args])
+        self.add_extract_section_parser(subparsers, [common_args])
+        self.add_remove_section_parser(subparsers, [common_args])
         self.add_remove_from(subparsers, [common_args])
         self.add_remove_from(subparsers, [common_args], 'bottom')
         self.add_remove_from_regex(subparsers, [common_args])
@@ -168,11 +193,11 @@ class ArgumentParser():
 
         # Return common args
         return shared_args
- 
-    def add_shrinklog_parser(self, subparsers, parents=None):
-        '''Arguments for shrinklog subcommand.'''
+
+    def add_extract_section_parser(self, subparsers, parents=None):
+        '''Arguments for extract-section subcommand.'''
         desc = "subcommand extracts a portion of a custom text or log file."
-        parser_sl = subparsers.add_parser('shrinklog', parents=parents,
+        parser_sl = subparsers.add_parser('extract-section', parents=parents,
                                           help=desc)
         parser_sl.add_argument(
             "-i", "--initstr", metavar="<regex>",
@@ -199,7 +224,29 @@ class ArgumentParser():
             action='store_true', dest="to_lower",
             help="Will make file(s) content lower case.")
 
-        parser_sl.set_defaults(func="shrink")
+        parser_sl.set_defaults(func="shrink", func2='extract')
+
+    def add_remove_section_parser(self, subparsers, parents=None):
+        '''Arguments for remove-section subcommand.'''
+        desc = "subcommand removes a portion of a custom text or log file."
+        parser_sl = subparsers.add_parser('remove-section', parents=parents,
+                                          help=desc)
+        parser_sl.add_argument(
+            "-i", "--initstr", metavar="<regex>",
+            action='store', required=True, type=str,
+            help="String where program start extracting data.")
+
+        parser_sl.add_argument(
+            "-e", "--endstr", metavar="<regex>",
+            action='store', required=True, type=str,
+            help="String where program stop extracting data.")
+
+        parser_sl.add_argument(
+            "-l", "--to-lower", required=False,
+            action='store_true', dest="to_lower",
+            help="Will make file(s) content lower case.")
+
+        parser_sl.set_defaults(func="shrink", func2='remove')
 
     def add_remove_from(self, subparsers, parents=None, pos='top'):
         '''Arguments for remove-from-top and remove-from-bottom subcommands.'''
@@ -248,7 +295,7 @@ class Shrinker():
         os.makedirs(output_dir)
 
     def shrink(self):
-        '''Main function for shinklog subcommand'''
+        '''Main function for extract and remove section subcommands'''
         # Get and process files
         count = 0
         for root, _, files in os.walk(self.args.root_dir):
@@ -260,14 +307,22 @@ class Shrinker():
                 data = self._get_content(origin)
                 # Remove return carriage characters
                 data = ''.join(data.split('\r'))
-                # Remove content before initStr
-                data = self._remove_before(data, self.args.initstr)
-                # Remove N lines from the top
-                data = self._remove_lines(data, self.args.remove_top + 1)
-                # Remove content after endStr
-                data = self._remove_after(data, self.args.endstr)
-                # Remove N lines from the bottom
-                data = self._remove_lines(data, self.args.remove_bottom, False)
+                # Extract a section of the file
+                if self.args.func2 == 'extract':
+                    # Remove content before initStr
+                    data = self._remove_before(data, self.args.initstr)
+                    # Remove N lines from the top
+                    data = self._remove_lines(data, self.args.remove_top + 1)
+                    # Remove content after endStr
+                    data = self._remove_after(data, self.args.endstr)
+                    # Remove N lines from the bottom
+                    data = self._remove_lines(data, self.args.remove_bottom,
+                                              False)
+                # Remove a portion of the file
+                elif self.args.func2 == 'remove':
+                    data = self._remove_between(data, self.args.initstr,
+                                                self.args.endstr)
+
                 if self.args.to_lower:
                     data = data.lower()
 
@@ -360,6 +415,23 @@ class Shrinker():
         else:
             return content[0]
 
+    def _remove_between(self, name, initstr, endstr):
+        '''Remove the lines that are between two regexes'''
+        content = self._locate_match(name, initstr)
+
+        if len(content) == 1:
+            print ("<-- Error: Initial string not found  %s" % initstr)
+            return content [0]
+
+        beforeInitRegex = content [0]
+        content = self._locate_match(content[1], endstr)
+
+        if len(content) == 1:
+            print ("<-- Error: End string not found  %s" % endstr)
+            return (beforeInitRegex + content[0])
+
+        return beforeInitRegex + content[1]
+
     def _remove_after(self, name, endstr):
         '''Remove the lines from a file or stream after a 
            given string regex matches'''
@@ -389,7 +461,7 @@ class Shrinker():
             content = re.sub('.*'+r+'.*\n', '', content)
         count = count - len(content.split('\n'))
         print ('Removed %i lines.' % count)
-        return content
+        return content[:-1]
 
 
 # CLIFF CLI CREATOR CLASS
@@ -425,9 +497,15 @@ if __name__ == "__main__":
 # shrinker shrinklog
 #     --root-dir original
 #     --initstr "Tx64 display.cfg file.*\n[*]+"
-#     --endstr "[*]+" (real_lenght is 25 starts)
+#     --endstr "[*][*][*]+" (real_lenght is 25 starts)
 #     --remove-from-top 2
 #     --remove-from-bottom 2
 #     --to-lower
-# shrinker remove-from-regex -r "number of" "present" "count" "empty"
+# 2/5/2018
+# shrinker remove-section --initstr "[*][*][*]+"
+#     --endstr "Tx64 display.cfg file.*\n[*]+"
+# shrinker extract-section --initstr "dlux"
+#     --endstr "[*][*][*]+" --remove-from-bottom 2 --to-lower
+# shrinker remove-from-regex
+#     -r "number of" "present" "count" "empty" "[.][.][.]+" "display.cfg"
 #     --root-dir parsed1 --inline
