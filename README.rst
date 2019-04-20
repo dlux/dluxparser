@@ -13,7 +13,7 @@ For all supported file types or details of the input/output:
 .. code-block:: bash
 
     dluxparser --help
-    dluxparser excel2json --help
+    dluxparser log2json --help
 
 INSTALLATION
 ------------
@@ -50,14 +50,16 @@ Package Structure
     ├── setup.py
     ├── cmd
     │   ├── __init__.py
-    │   ├── excel2json.py
+    │   ├── csv2json.py
+    │   ├── log2json.py
     │   └── main.py
     ├── doc
     │   └── source
     │       └── README.rst -> ../../README.rst
     ├── tests
     │   ├── __init__.py
-    │   └── test_excel2json.py
+    │   ├── test_csv2json.py
+    │   └── test_log2json.py
     ├── Vagrantfile
     └── post_install.sh
 

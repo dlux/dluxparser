@@ -1,0 +1,8 @@
+language: python
+install:
+  - pip install rstcheck
+  - pip install -e ./
+script:
+  - rstcheck README.rst
+  - dluxparser --help
+  - dluxparser csv2json -h
