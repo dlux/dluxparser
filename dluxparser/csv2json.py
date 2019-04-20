@@ -1,3 +1,11 @@
+'''
+csv2json is a parser to transform a csv file into json
+
+Arguments:
+- ``--file | -f``: The csv file name to be transformed
+- ``--delimiter | -d``: The delimiter of csv file, defaults to ','
+'''
+
 import argparse
 import csv
 import json
@@ -23,7 +31,7 @@ class ArgumentParser():
         parser.add_argument(
             "-d", "--delimiter", metavar="<delimiter>",
             action='store', required=False, dest='delimiter', type=str,
-            default =  ',',
+            default=',',
             help="Delimiter of csv file - defaults to ','")
         parser.set_defaults(func='parse')
 
@@ -43,13 +51,14 @@ class Csv2Json(object):
         self.delimiter = args.delimiter
 
     def parse(self):
-       '''Main function to parse input csv file into json'''
-       with open(self.csvfile, 'r') as csvfile:
-           reader = csv.DictReader(csvfile, delimiter=self.delimiter)
-           out = json.dumps([row for row in reader])
-           with open(self.jsonfile, 'w+') as jsonfile:
-               jsonfile.write(out)
-       return self.jsonfile
+        '''Main function to parse input csv file into json'''
+        with open(self.csvfile, 'r') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=self.delimiter)
+            out = json.dumps([row for row in reader])
+            with open(self.jsonfile, 'w+') as jsonfile:
+                jsonfile.write(out)
+        return self.jsonfile
+
 
 # CLIFF CLI CREATOR CLASS - GENERIC
 class CliffCsv2Json(command.Command):
@@ -76,4 +85,3 @@ def main(opts=None):
 
 if __name__ == "__main__":
     main()
-

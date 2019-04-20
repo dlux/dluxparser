@@ -51,7 +51,7 @@ Arguments
 * ``--root-dir, -d``: The parent directory where files to be parsed live.
   Folder can contain sub-folders.
 * ``--output-dir, -o``: The directory where parsed files will live.
- 
+
 Usage
 -----
 
@@ -85,13 +85,14 @@ class ArgumentParser():
         parser.add_argument(
             "-o", "--output-dir", metavar="<dir_name>",
             action='store', required=False, dest='output_dir', type=str,
-            default =  'ParsedFiles',
+            default='ParsedFiles',
             help="The directory where parsed file(s) will be saved.")
 
         parser.set_defaults(func='parse')
 
     def parse_args(self, args):
         return self.parser.parse_args(args=args)
+
 
 class Log2Json():
 
@@ -108,7 +109,7 @@ class Log2Json():
 
         # Create output folder if exists back it up
         if os.path.exists(output_dir):
-            shutil.move(output_dir, output_dir + '.bk.' + 
+            shutil.move(output_dir, output_dir + '.bk.' +
                         datetime.now().isoformat())
         os.makedirs(output_dir)
 
@@ -126,12 +127,9 @@ class Log2Json():
                 # Parse data
                 print("%i. Parsing file: %s" % (count, origin))
                 data = self._parse(origin)
-                #if data:
-                #    data['id'] = fname
-
                 self._write_to_file(output, json.dumps(data, indent=4))
 
-    ##### Internal methods - To be used by the subcommands #####
+    # #### Internal methods - To be used by the subcommands #####
     def _get_content(self, name):
         '''Get the content from a file or from stream.'''
         if os.path.exists(name):
@@ -171,7 +169,7 @@ class Log2Json():
         # 0. Initial
         #   Collect any character until a digit or '=' appears.
         #   If digit:  Collected chars became a feature. Move to state 1.
-        #   If '=' char: First word became a feature, the rest became a key. 
+        #   If '=' char: First word became a feature, the rest became a key.
         #                Move to state 2.
         # 1. Collect any character until a '=' appears.
         #    Collected chars became a key. Move to state 2.
@@ -180,7 +178,7 @@ class Log2Json():
         #    Fix feature json output.
         #    Move to state 0.
         # Note: all blank spaces are replaced with underscores.
-        json_content={}
+        json_content = {}
         nElement = feature = key = value = ''
         state = 0
 
@@ -188,7 +186,7 @@ class Log2Json():
             # Verify it is not garbage if so, ignore
             try:
                 char_.decode('utf-8')
-            except:
+            except e:
                 continue
 
             if state == 0:
@@ -204,7 +202,7 @@ class Log2Json():
                     if tmp in self.SPECIAL_WORDS and len(aux) > 1:
                         # Special case for front panel and power supply
                         aux = re.split('\\s', aux[1], 1)
-                        feature = (feature + '_' + 
+                        feature = (feature + '_' +
                                    self._trim_plus_underscore(aux[0]))
                     if len(aux) > 1:
                         key = self._trim_plus_underscore(aux[1])
@@ -241,7 +239,7 @@ class Log2Json():
                         # Insert {key, value} on nElement index
                         # Or insert value on nElement index if no key
                         index = int(nElement) if nElement.isdigit() else 1
-                        
+
                         while index + 1 > len(jcf):
                             jcf.append({})
 
@@ -259,7 +257,7 @@ class Log2Json():
         for key in json_content.keys():
             # Remove empty dictionaries
             json_content[key] = filter(None, json_content[key])
-            if len(json_content[key]) == 1 :
+            if len(json_content[key]) == 1:
                 # if list has only one element remove the list
                 json_content[key] = json_content[key][0]
 
@@ -301,4 +299,3 @@ def main(opts=None):
 
 if __name__ == "__main__":
     main()
-

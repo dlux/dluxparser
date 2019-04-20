@@ -8,7 +8,7 @@ Common Arguments
 
 * ``--root-dir, -d``: The parent directory where files to be parsed live.
   Folder can contain sub-folders.
-* ``--output-dir, -o``: The directory where parsed files will live. 
+* ``--output-dir, -o``: The directory where parsed files will live.
 * ``--inline``: The parsed files will replace the original ones.
 
 Available sub-commands:
@@ -143,8 +143,8 @@ class ArgumentParser():
     def __init__(self, args=None, parser=None):
         desc = 'shrinker provide sub-commands to shrink a text or log file.'
         usage = ('shrinker [-h] <SUB-COMMAND> ...\n\n'
-           'To see help on a specific sub-command, do:\n'
-           'shrinker <SUB-COMMAND> --help\n\n')
+                 'To see help on a specific sub-command, do:\n'
+                 'shrinker <SUB-COMMAND> --help\n\n')
         if not parser:
             parser = argparse.ArgumentParser(
                 description=desc,
@@ -165,7 +165,7 @@ class ArgumentParser():
         self.add_remove_from(subparsers, [common_args], 'bottom')
         self.add_remove_from_regex(subparsers, [common_args])
         _lower = subparsers.add_parser('to-lower', parents=[common_args],
-                                      help='Make file(s) content lower case.')
+                                       help='Make file(s) content lower case.')
         _lower.set_defaults(func='to_lower')
 
     def parse_args(self, args):
@@ -183,7 +183,7 @@ class ArgumentParser():
         group.add_argument(
             "-o", "--output-dir", metavar="<dir_name>",
             action='store', required=False, dest='output_dir', type=str,
-            default =  'ParsedFiles',
+            default='ParsedFiles',
             help="The directory where parsed file(s) will be saved.")
         group.add_argument(
             "--inline", action='store_true',
@@ -252,7 +252,7 @@ class ArgumentParser():
         '''Arguments for remove-from-top and remove-from-bottom subcommands.'''
         desc = ("subcommand remove N lines from the %s of the file." % pos)
         parser_rf = subparsers.add_parser(('remove-from-%s' % pos),
-                                           parents=parents, help=desc)
+                                          parents=parents, help=desc)
         parser_rf.add_argument(
             "-n", "--number", metavar="<number>",
             action='store', required=True, type=int,
@@ -290,7 +290,7 @@ class Shrinker():
 
         # Create output folder if exists rename it
         if os.path.exists(output_dir):
-            shutil.move(output_dir, output_dir + '.bk.' + 
+            shutil.move(output_dir, output_dir + '.bk.' +
                         datetime.now().isoformat())
         os.makedirs(output_dir)
 
@@ -372,7 +372,7 @@ class Shrinker():
         self._ifinline()
         print("Found %i files." % count)
 
-    ##### Internal methods - To be used by the subcommands #####
+    # #### Internal methods - To be used by the subcommands #####
     def _get_content(self, name):
         '''Get the content from a file or from stream.'''
         if os.path.exists(name):
@@ -407,7 +407,7 @@ class Shrinker():
             shutil.move(self.args.output_dir, self.args.root_dir)
 
     def _remove_before(self, name, initstr):
-        '''Remove lines from the top of a file or stream until 
+        '''Remove lines from the top of a file or stream until
            given string regex matches'''
         content = self._locate_match(name, initstr)
         if len(content) > 1:
@@ -421,9 +421,9 @@ class Shrinker():
 
         if len(content) == 1:
             print ("<-- Error: Initial string not found  %s" % initstr)
-            return content [0]
+            return content[0]
 
-        beforeInitRegex = content [0]
+        beforeInitRegex = content[0]
         content = self._locate_match(content[1], endstr)
 
         if len(content) == 1:
@@ -433,7 +433,7 @@ class Shrinker():
         return beforeInitRegex + content[1]
 
     def _remove_after(self, name, endstr):
-        '''Remove the lines from a file or stream after a 
+        '''Remove the lines from a file or stream after a
            given string regex matches'''
         content = self._locate_match(name, endstr)
         return content[0]

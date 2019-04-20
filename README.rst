@@ -1,6 +1,10 @@
 ==================
 ABOUT THIS PROJECT
 ==================
+
+.. image:: https://travis-ci.com/dlux/dluxparser.svg?branch=master
+    :target: https://travis-ci.com/dlux/dluxparser
+
 This repository contains a CLI parser to transform a given file into
 a different type for instance excel to json.
 
