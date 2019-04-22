@@ -148,7 +148,7 @@ class Log2Json():
     def _write_to_file(self, file_name, plain_content):
         '''Writes a given text into a file.'''
         if not plain_content:
-            print ("<-- Error: Empty processed data for file %s" % file_name)
+            print("<-- Error: Empty processed data for file %s" % file_name)
             plain_content = " "
 
         the_file = open(file_name, "w")
@@ -270,7 +270,7 @@ class Log2Json():
         for r in regex:
             content = re.sub('.*'+r+'.*\n', '', content)
         count = count - len(content.split('\n'))
-        print ('Removed %i lines.' % count)
+        print('Removed %i lines.' % count)
         return content
 
 
